@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -o errexit
+set -o errtrace
+set -o nounset
+set -o pipefail
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+CLEAR_COLOR='\033[0m'
+
+function fail {
+    echo -e "${RED}[error] $1${CLEAR_COLOR}"
+    exit 1
+}
+
+echo "[info] running pre-push hook..."
+
+# Check format
+INITIAL_STATUS="$(git status -s | shasum)"
+go fmt
+go mod tidy
+TERMINAL_STATUS="$(git status -s | shasum)"
+if [[ "${INITIAL_STATUS}" != "${TERMINAL_STATUS}" ]]; then
+    fail "ran go fmt and go mod tidy. review changes and try again"
+fi
+
+if ! go build &> /dev/null; then
+    fail "go build failed. review code and try again"
+fi
+
+if ! go test ./... &> /dev/null; then
+    fail "go test failed. review code and try again"
+fi
+
+
+echo -e "${GREEN}[success] ran pre-push hook${CLEAR_COLOR}"
